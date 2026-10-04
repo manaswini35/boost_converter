@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Boost Converter Control Design — Full Derivation & PID Design</title>
+<script>
+  MathJax = {
+    tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root {
+    --accent: #1a5276;
+    --accent-light: #2874a6;
+    --bg: #ffffff;
+    --panel: #f4f8fb;
+    --border: #d5dce3;
+    --text: #1b1b1b;
+    --muted: #5a6570;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Georgia, 'Times New Roman', serif;
+    color: var(--text);
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 30px 80px;
+    line-height: 1.65;
+    background: var(--bg);
+  }
+  h1 {
+    font-size: 28px;
+    color: var(--accent);
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 12px;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 15px;
+    margin-bottom: 30px;
+    font-style: italic;
+  }
+  h2 {
+    font-size: 22px;
+    color: #fff;
+    background: var(--accent);
+    padding: 10px 16px;
+    border-radius: 6px;
+    margin-top: 50px;
+  }
+  h3 {
+    font-size: 18px;
+    color: var(--accent-light);
+    border-left: 4px solid var(--accent-light);
+    padding-left: 10px;
+    margin-top: 30px;
+  }
+  h4 {
+    font-size: 15.5px;
+    color: var(--text);
+    margin-top: 20px;
+    margin-bottom: 6px;
+    text-decoration: underline;
+    text-decoration-color: var(--border);
+  }
+  .step-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--accent-light);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+  }
+  .result-box {
+    background: #eef7ee;
+    border: 1px solid #b7dcb8;
+    border-left: 5px solid #4c9a4f;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-weight: 600;
+  }
+  .note-box {
+    background: #fff8e6;
+    border: 1px solid #f0dca0;
+    border-left: 5px solid #d4a017;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 14.5px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 18px 0;
+    font-size: 14.5px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th {
+    background: var(--accent);
+    color: white;
+  }
+  tr:nth-child(even) { background: #f8fafc; }
+  code {
+    background: #eef1f4;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13.5px;
+    color: #a03030;
+  }
+  .toc {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 24px;
+    margin-bottom: 30px;
+  }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc ol { margin: 8px 0; padding-left: 22px; }
+  .tag {
+    display: inline-block;
+    background: var(--accent-light);
+    color: white;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  .params-table td:first-child { font-weight: 600; color: var(--accent); }
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 2px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>DC–DC Boost Converter: Mathematical Modeling & PID Controller Design</h1>
+<div class="subtitle">Complete derivation, pole-zero analysis, and controller design addressing professor's review comments</div>
+
+<div class="toc">
+<strong>Contents</strong>
+<ol>
+  <li><a href="#params">System Parameters</a></li>
+  <li><a href="#req1">Requirement 1 — Mathematical Derivation (No "Guessing" of Ki, Kp)</a></li>
+  <li><a href="#req2">Requirement 2 — PID Controller Design Method</a></li>
+  <li><a href="#req3">Requirement 3 — Controller Transfer Function, Poles/Zeros & Final Tuning</a></li>
+  <li><a href="#implementation">Simulink Implementation Summary</a></li>
+  <li><a href="#conclusion">Conclusion</a></li>
+</ol>
+</div>
+
+<h2 id="params">System Parameters</h2>
+<table class="params-table">
+<tr><th>Symbol</th><th>Description</th><th>Value</th></tr>
+<tr><td>$V_{ref}$</td><td>Reference output voltage</td><td>20 V</td></tr>
+<tr><td>$L$</td><td>Boost inductor</td><td>76.8 µH</td></tr>
+<tr><td>$C$</td><td>Output capacitor</td><td>400 µF</td></tr>
+<tr><td>$R$</td><td>Load resistance</td><td>4 Ω</td></tr>
+<tr><td>$f_s$</td><td>Switching frequency</td><td>25 kHz ($T_s$ = 40 µs)</td></tr>
+<tr><td>$V_{g,nom}$</td><td>Nominal input voltage (design point, average of profile)</td><td>13.4 V</td></tr>
+<tr><td>$D'$</td><td>Steady-state complement duty ratio, $V_g/V$</td><td>0.67</td></tr>
+<tr><td>$D$</td><td>Steady-state duty ratio</td><td>0.33</td></tr>
+<tr><td>$I_o$</td><td>Rated output current, $V/R$</td><td>5 A</td></tr>
+<tr><td>$P_o$</td><td>Rated output power</td><td>100 W</td></tr>
+</table>
+
+<hr>
+
+<h2 id="req1">Requirement 1 — "Use a mathematical approach, derive it"</h2>
+<p>This section derives the small-signal control-to-output transfer function <strong>from first principles</strong> using state-space averaging (the method used throughout Chapters 7–8 of Erickson &amp; Maksimović, <em>Fundamentals of Power Electronics</em>), rather than quoting a formula. This directly explains why the original <code>Kp = 0.7, Ki = 100</code> gains produce poor, non-smooth, high steady-state-error behavior.</p>
+
+<h3>1.1 Circuit equations for each switch state</h3>
+<p>Let $i_L(t)$ be the inductor current and $v(t)$ be the capacitor (output) voltage — the two state variables.</p>
+
+<div class="step-box">
+<h4>Switch ON (MOSFET conducting, $0 < t < dT_s$)</h4>
+The inductor is connected directly across the input; the diode is reverse-biased so the output stage is isolated and the capacitor alone supplies the load.
+$$L\frac{di_L}{dt} = v_g(t) \qquad C\frac{dv}{dt} = -\frac{v}{R}$$
+</div>
+
+<div class="step-box">
+<h4>Switch OFF (MOSFET off, diode conducting, $dT_s < t < T_s$)</h4>
+The inductor current now flows through the diode into the output.
+$$L\frac{di_L}{dt} = v_g(t) - v(t) \qquad C\frac{dv}{dt} = i_L(t) - \frac{v}{R}$$
+</div>
+
+<h3>1.2 Averaging over one switching period</h3>
+<p>Weighting each state's equation by the fraction of the period it's active ($d$ for ON, $d' = 1-d$ for OFF) gives the averaged (large-signal) model:</p>
+<div class="step-box">
+$$L\frac{d\langle i_L\rangle}{dt} = \langle v_g\rangle - d'(t)\,\langle v\rangle$$
+$$C\frac{d\langle v\rangle}{dt} = d'(t)\,\langle i_L\rangle - \frac{\langle v\rangle}{R}$$
+</div>
+
+<h3>1.3 Steady-state (DC) operating point</h3>
+<p>Setting the derivatives to zero at the nominal duty ratio $D$:</p>
+<div class="step-box">
+$$0 = V_g - D'V \;\Rightarrow\; V = \frac{V_g}{D'}$$
+$$0 = D'I_L - \frac{V}{R} \;\Rightarrow\; I_L = \frac{V}{D'R} = \frac{V_g}{D'^2R}$$
+</div>
+<div class="result-box">
+With $V_g = 13.4$ V and $D' = 0.67$: $\quad V = 20.0$ V &nbsp;&nbsp;✓ (matches reference) &nbsp;&nbsp; $I_L = 7.46$ A
+</div>
+
+<h3>1.4 Perturbation and linearization</h3>
+<p>Introduce small AC perturbations on top of the DC values:</p>
+$$i_L = I_L+\hat{i}_L \quad v = V+\hat{v} \quad v_g = V_g+\hat{v}_g \quad d = D+\hat{d} \quad d' = D'-\hat{d}$$
+
+<p>Substituting into the averaged equations and expanding the product terms, e.g.:</p>
+$$d'(t)\,v(t) = (D'-\hat d)(V+\hat v) = D'V + D'\hat v - V\hat d - \hat d\hat v$$
+
+<p>The term $\hat d \hat v$ is a product of two small AC quantities — by the small-signal approximation this is dropped as negligibly small. Doing the same for $d'(t)\,i_L(t)$ and discarding the DC (steady-state) terms leaves the following <strong>linear AC equations</strong>:</p>
+
+<div class="step-box">
+$$L\frac{d\hat{i}_L}{dt} = \hat{v}_g - D'\hat{v} + V\hat{d} \tag{A}$$
+$$C\frac{d\hat{v}}{dt} = D'\hat{i}_L - I_L\hat{d} - \frac{\hat{v}}{R} \tag{B}$$
+</div>
+
+<h3>1.5 Laplace transform and solving for $G_{vd}(s)$</h3>
+<p>To isolate the control-to-output transfer function $G_{vd}(s) = \hat v(s)/\hat d(s)$, set the line disturbance $\hat v_g(s) = 0$ and Laplace-transform (A) and (B):</p>
+$$sL\hat{I}_L = -D'\hat{V} + V\hat{D} \quad\Rightarrow\quad \hat{I}_L = \frac{V\hat{D}-D'\hat{V}}{sL}$$
+$$sC\hat{V} = D'\hat{I}_L - I_L\hat{D} - \frac{\hat{V}}{R}$$
+
+<p>Substituting the first result into the second and collecting all $\hat V$ terms on the left:</p>
+$$\hat{V}\left[sC+\frac{D'^2}{sL}+\frac{1}{R}\right] = \hat{D}\left[\frac{D'V}{sL}-I_L\right]$$
+
+<p>Multiplying through by $sL$, and using $I_L = V/(D'R)$ to simplify the bracket on the right:</p>
+$$\frac{D'V}{sL}\cdot sL - I_L\cdot sL = D'V - \frac{sLV}{D'R} = D'V\left[1-\frac{sL}{D'^2R}\right]$$
+
+<p>Dividing both sides by $D'^2$ and rearranging into standard normalized form gives the final result:</p>
+
+<div class="result-box">
+$$G_{vd}(s) = \frac{\hat v(s)}{\hat d(s)}\bigg|_{\hat v_g=0} = \frac{V}{D'}\cdot\frac{1-\dfrac{sL}{D'^2R}}{1+\dfrac{sL}{D'^2R}+\dfrac{s^2LC}{D'^2}}$$
+</div>
+
+<p>This can be written in the standard salient-features form:</p>
+$$G_{vd}(s) = G_{d0}\cdot\frac{1-\dfrac{s}{\omega_z}}{1+\dfrac{s}{Q\omega_0}+\left(\dfrac{s}{\omega_0}\right)^2}$$
+
+<p>with the following identifications (matching each coefficient):</p>
+<table>
+<tr><th>Feature</th><th>Formula</th><th>Meaning</th></tr>
+<tr><td>$G_{d0}$</td><td>$V/D'$</td><td>DC gain (duty-to-voltage)</td></tr>
+<tr><td>$\omega_0$</td><td>$D'/\sqrt{LC}$</td><td>Resonant double-pole frequency (LC filter)</td></tr>
+<tr><td>$Q$</td><td>$D'R\sqrt{C/L}$</td><td>Quality factor of the resonance</td></tr>
+<tr><td>$\omega_z$</td><td>$D'^2R/L$</td><td><strong>Right-half-plane (RHP) zero</strong></td></tr>
+</table>
+
+<h3>1.6 Numerical evaluation for this converter</h3>
+<div class="step-box">
+$$G_{d0} = \frac{20}{0.67} = 29.85 \text{ V}$$
+$$\omega_0 = \frac{0.67}{\sqrt{(76.8\text{µH})(400\text{µF})}} = 3823 \text{ rad/s} \;\Rightarrow\; f_0 = 608 \text{ Hz}$$
+$$Q = (0.67)(4)\sqrt{\frac{400\text{µF}}{76.8\text{µH}}} = 6.1$$
+$$\omega_z = \frac{(0.67)^2(4)}{76.8\text{µH}} = 23{,}385\text{ rad/s} \;\Rightarrow\; f_z = 3.72\text{ kHz}$$
+</div>
+
+<div class="note-box">
+<strong>Why this explains your professor's comment.</strong> The double pole at $f_0=608$ Hz has $Q=6.1$ — fairly peaky. Evaluating the phase of $G_{vd}(j\omega)$ shows the plant contributes about $-170^\circ$ of phase lag by 750 Hz, and crosses past $-180^\circ$ around 1 kHz. With the old gains ($K_p=0.7$), the loop gain at high frequency is $\approx G_{d0}\cdot K_p \approx 21$ — far above unity — which forces the actual loop crossover out into this already-unstable phase region. That is precisely why the current/output waveform looked noisy with persistent error instead of settling cleanly: the loop was operating close to marginal stability, not truly regulating.
+</div>
+
+<hr>
+
+<h2 id="req2">Requirement 2 — "Use a PID method so you can show you derived and learned it"</h2>
+<p>This section designs new PID gains analytically using classical frequency-response (phase margin) methods, rather than trial-and-error tuning.</p>
+
+<h3>2.1 Selecting a safe crossover frequency</h3>
+<p>Two hard constraints from the plant, established in Section 1:</p>
+<ul>
+<li>Crossover must stay well below $f_0 = 608$ Hz — above this, phase collapses toward $-180^\circ$ due to the resonant double pole.</li>
+<li>Crossover must stay well below $f_z = 3.72$ kHz — the RHP zero adds further lag on top of the poles.</li>
+</ul>
+<p>Choosing <strong>$f_c = 500$ Hz</strong> ($\omega_c = 3142$ rad/s) satisfies both with margin.</p>
+
+<h3>2.2 Evaluating the plant at crossover</h3>
+<div class="step-box">
+$$\frac{s}{\omega_0}\bigg|_{\omega_c} = \frac{3142}{3823}=0.822 \qquad \frac{s}{\omega_z}\bigg|_{\omega_c}=\frac{3142}{23385}=0.134$$
+
+Denominator: $\; 1-(0.822)^2 + j\dfrac{0.822}{Q} = 0.324+j0.134 \Rightarrow |{\cdot}|=0.351,\;\angle = 22.5^\circ$
+
+Numerator: $\;1-j(0.134) \Rightarrow |{\cdot}| = 1.009,\;\angle=-7.65^\circ$
+
+$$|G_{vd}(j\omega_c)| = 29.85\times\frac{1.009}{0.351} = 85.9 \qquad \angle G_{vd}(j\omega_c) = -7.65^\circ-22.5^\circ=-30.2^\circ$$
+</div>
+
+<h3>2.3 Solving for compensator gain and phase</h3>
+<p>The PWM comparator contributes modulator gain $F_m = 1/V_{pp} = 1$ (sawtooth spans 0 → 1). For unity loop gain at crossover:</p>
+$$|G_c(j\omega_c)|\cdot|G_{vd}(j\omega_c)| = 1 \;\Rightarrow\; |G_c(j\omega_c)| = \frac{1}{85.9} = 0.01164$$
+
+<p>Targeting a phase margin of $PM = 60^\circ$: total loop phase at crossover must equal $-(180^\circ-PM)=-120^\circ$. Since the plant already contributes $-30.2^\circ$, the compensator itself must not add more than about $-90^\circ$ (the natural maximum for a PI term) — placing the integrator zero well below crossover keeps this well within bounds, so the design is comfortably achievable.</p>
+
+<h3>2.4 PID structure and gain solution</h3>
+<p>Using $G_c(s) = K_p + \dfrac{K_i}{s} + K_ds$, with the integrator zero $\omega_{zc}=K_i/K_p$ placed at $2\pi(50\text{ Hz}) = 314$ rad/s (a decade below crossover, standard practice):</p>
+<div class="step-box">
+$$K_p \approx \frac{0.01164}{\sqrt{1+(314/3142)^2}} \approx 0.0116$$
+$$K_i = K_p\cdot\omega_{zc} = 0.0116\times 314 \approx 3.6$$
+$$K_d \approx 3\times10^{-6}\;\text{(small derivative term, adds phase lead near }f_0\text{ to damp the }Q=6.1\text{ resonance)}$$
+</div>
+
+<div class="result-box">
+Resulting phase margin ≈ 144° — a well-damped, non-oscillatory design with fast settling and zero DC steady-state error (guaranteed by the integrator term).
+</div>
+
+<hr>
+
+<h2 id="req3">Requirement 3 — Controller Transfer Function, Poles/Zeros & Final Tuning</h2>
+
+<h3>3.1 Continuous-time controller transfer function</h3>
+$$G_c(s) = K_p + \frac{K_i}{s} + K_ds = 0.0116 + \frac{3.6}{s}+3\times10^{-6}s$$
+
+<p>Written as a single rational function (common denominator $s$):</p>
+$$G_c(s) = \frac{K_ds^2+K_ps+K_i}{s} = \frac{3\times10^{-6}s^2+0.0116s+3.6}{s}$$
+
+<h3>3.2 Poles and zeros of the controller</h3>
+<p>The controller has one pole at the origin (the integrator, $s=0$) and two zeros found from the quadratic numerator $K_ds^2+K_ps+K_i=0$:</p>
+$$s = \frac{-K_p\pm\sqrt{K_p^2-4K_dK_i}}{2K_d}$$
+<div class="step-box">
+$$s = \frac{-0.0116\pm\sqrt{(0.0116)^2-4(3\times10^{-6})(3.6)}}{2(3\times10^{-6})}$$
+$$= \frac{-0.0116\pm\sqrt{1.346\times10^{-4}-4.32\times10^{-5}}}{6\times10^{-6}} = \frac{-0.0116\pm0.00956}{6\times10^{-6}}$$
+</div>
+<div class="result-box">
+$$z_1 \approx -343\text{ rad/s}\;(f\approx 54.6\text{ Hz}) \qquad z_2 \approx -3527\text{ rad/s}\;(f\approx 561\text{ Hz})$$
+Controller pole: $\;s=0$ (integrator)
+</div>
+<p>This is a <strong>Type-III-like structure</strong>: the two zeros sit near the plant's resonant frequency region (561 Hz is close to $f_0=608$ Hz), giving the phase boost needed right where the LC double pole would otherwise collapse the phase — exactly the intended cancellation strategy referenced in your design-method PDF for boost-type converters.</p>
+
+<h3>3.3 Closed-loop pole-zero picture (qualitative)</h3>
+<table>
+<tr><th>Element</th><th>Location</th><th>Effect</th></tr>
+<tr><td>Plant poles (complex pair)</td><td>$f_0=608$ Hz, Q=6.1</td><td>Resonant peak — dominant dynamics</td></tr>
+<tr><td>Plant zero (RHP)</td><td>$f_z=3.72$ kHz</td><td>Non-minimum phase — limits achievable bandwidth</td></tr>
+<tr><td>Controller pole</td><td>$s=0$</td><td>Forces zero steady-state error</td></tr>
+<tr><td>Controller zero 1</td><td>≈54.6 Hz</td><td>Rolls integrator action off before crossover</td></tr>
+<tr><td>Controller zero 2</td><td>≈561 Hz</td><td>Adds phase lead to counter resonance-induced lag</td></tr>
+</table>
+
+<h3>3.4 Discrete-time conversion (for Simulink's Discrete PID block)</h3>
+<p>With sample time $T_s = 40$ µs (one update per switching period) and the Tustin (trapezoidal) transform $s \to \dfrac{2}{T_s}\cdot\dfrac{z-1}{z+1}$, Simulink's Discrete PID Controller block performs this conversion internally once you enter the continuous-equivalent gains and select the Trapezoidal integrator method — no manual z-domain algebra is required. The resulting discrete compensator has the form:</p>
+$$G_c(z) = K_p + K_i\cdot T_s\cdot\frac{z+1}{2(z-1)} + K_d\cdot\frac{2}{T_s}\cdot\frac{z-1}{z+1}$$
+
+<h3>3.5 Final gains to enter in Simulink</h3>
+<table>
+<tr><th>Parameter</th><th>Old value</th><th>New value</th></tr>
+<tr><td>Controller type</td><td>PI</td><td><strong>PID</strong></td></tr>
+<tr><td>P</td><td>0.7</td><td><strong>0.0116</strong></td></tr>
+<tr><td>I</td><td>100</td><td><strong>3.6</strong></td></tr>
+<tr><td>D</td><td>—</td><td><strong>3e-6</strong></td></tr>
+<tr><td>N (filter coeff.)</td><td>—</td><td><strong>100</strong></td></tr>
+<tr><td>Sample time</td><td>-1 (inherited)</td><td><strong>4e-5</strong></td></tr>
+<tr><td>Integrator method</td><td>Forward Euler (default)</td><td><strong>Trapezoidal</strong></td></tr>
+<tr><td>Output saturation</td><td>0.1 – 0.9</td><td>0.1 – 0.9 (unchanged)</td></tr>
+</table>
+
+<hr>
+
+<h2 id="implementation">Simulink Implementation Summary</h2>
+<ol>
+<li>Open the <strong>PID Controller</strong> block dialog (already discrete-time).</li>
+<li>Change <strong>Controller</strong> dropdown from "PI" to "PID".</li>
+<li>Set P = 0.0116, I = 3.6, D = 3e-6, N = 100.</li>
+<li>Set Sample time = 4e-5.</li>
+<li>Expand "Integrator and Filter methods" → set integrator method to Trapezoidal.</li>
+<li>Go to the Saturation tab → confirm Limit output is checked, Lower = 0.1, Upper = 0.9.</li>
+<li>Click Apply/OK, save, and re-run the simulation.</li>
+<li>Compare the new Scope3 trace against the old one: output should settle at 20 V with visibly reduced ripple/noise on the current waveform, and no lingering offset after each input-voltage step.</li>
+</ol>
+
+<hr>
+
+<h2 id="conclusion">Conclusion</h2>
+<p>The original PI gains ($K_p=0.7,\,K_i=100$) were selected without reference to the converter's actual small-signal dynamics, driving the loop crossover into a frequency region where the LC resonance and RHP zero had already collapsed the phase past $-180^\circ$ — producing the noisy, non-settling behavior your professor flagged. By deriving $G_{vd}(s)$ from first principles (state-space averaging), identifying the plant's poles ($f_0=608$ Hz, Q=6.1) and RHP zero ($f_z=3.72$ kHz), and designing a PID compensator analytically around a safe crossover frequency (500 Hz, 144° phase margin), the new gains ($K_p=0.0116,\,K_i=3.6,\,K_d=3\times10^{-6}$) should deliver a smooth, well-damped step response with zero steady-state error.</p>
+
+<footer>
+Boost Converter Control Design Report — derived using state-space averaging (Erickson &amp; Maksimović, <em>Fundamentals of Power Electronics</em>, Ch. 7–8) and classical frequency-response PID design.
+</footer>
+
+</body>
+</html>
