@@ -1,0 +1,21 @@
+# Operating-system metadata
+desktop.ini
+.DS_Store
+
+# MATLAB editor and autosave files
+*.asv
+*.m~
+*.autosave
+
+# Simulink cache and generated build output
+*.slxc
+slprj/
+*_grt_rtw/
+*_ert_rtw/
+*_sfun/
+codegen/
+
+# MATLAB-generated MEX binaries
+*.mexw*
+*.mexa*
+*.mexm*
