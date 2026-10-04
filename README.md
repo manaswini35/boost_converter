@@ -16,10 +16,66 @@ MATLAB and Simulink files for modeling and studying feedback control of a DC-DC 
 | `boost_converter_control_design.html` | Detailed derivation and discussion of the small-signal model and candidate PID tuning. Open this file in a web browser. |
 | `Bc_report.docx` | Project report. |
 | `Boost_converter.pdf` | PDF design/reference document. |
+| `figures/` | Circuit diagram, Simulink model screenshots, Bode plot, and simulation waveforms from the report. |
 | `freq_resp.fig` | Saved MATLAB figure for frequency-response results. |
 | `signal_editor.mat` | Signal Editor data for the Simulink models. |
 | `signal_editor_load_curr (1).mat` | Load-current signal profile. |
 | `signal_editor_Vref.mat` | Reference-voltage signal profile. |
+
+## Results
+
+All figures from the project report are in [`figures/`](figures/). Highlights:
+
+**Boost converter power stage**
+
+![Boost converter circuit](figures/01_boost_converter_circuit.png)
+
+**Bode plot of the control-to-output transfer function Gvd(s)**
+
+![Bode plot of Gvd(s)](figures/06_bode_plot_Gvd.png)
+
+**Closed-loop output voltage regulated at the 20 V reference**
+
+![Closed-loop output voltage](figures/07_closed_loop_output_voltage_20V.png)
+
+**Case 1: load voltage tracking reference steps 16 V → 24 V → 28 V**
+
+![Case 1 reference tracking](figures/09_case1_vref_tracking_load_voltage.png)
+
+**Case 2: load voltage under a load-current disturbance profile**
+
+![Case 2 load-current disturbance](figures/13_case2_load_voltage_load_current_profile.png)
+
+**Case 3: source and load quantities over the input-voltage profile**
+
+![Case 3 input-voltage variation](figures/17_case3_source_load_quantities.png)
+
+<details>
+<summary>Full figure list</summary>
+
+| Figure | Description |
+| --- | --- |
+| `01_boost_converter_circuit.png` | Boost converter circuit diagram |
+| `02_open_loop_simulink_model.png` | Open-loop Simulink model (`open_loop.slx`) |
+| `03_open_loop_output_voltage_load_current.png` | Open loop: output voltage and load current at fixed duty ratio |
+| `04_open_loop_inductor_diode_waveforms.png` | Open loop: inductor and diode voltage/current waveforms |
+| `05_open_loop_capacitor_switch_waveforms.png` | Open loop: capacitor and switch waveforms |
+| `06_bode_plot_Gvd.png` | Bode plot of the control-to-output transfer function Gvd(s) |
+| `07_closed_loop_output_voltage_20V.png` | Closed-loop output voltage settling at 20 V |
+| `08_case1_vref_simulink_model.png` | Case 1: Simulink model (`closed_loop_Vref.slx`) |
+| `09_case1_vref_tracking_load_voltage.png` | Case 1: load voltage tracking the reference steps |
+| `10_case1_inductor_diode_waveforms.png` | Case 1: inductor and diode waveforms |
+| `11_case1_capacitor_source_switch_waveforms.png` | Case 1: capacitor, source and switch waveforms |
+| `12_case2_load_current_simulink_model.png` | Case 2: Simulink model (`closed_loop_load_curr.slx`) |
+| `13_case2_load_voltage_load_current_profile.png` | Case 2: load voltage and injected load-current profile |
+| `14_case2_inductor_diode_waveforms.png` | Case 2: inductor and diode waveforms |
+| `15_case2_capacitor_source_switch_waveforms.png` | Case 2: capacitor, source and switch waveforms |
+| `16_case3_input_voltage_simulink_model.png` | Case 3: Simulink model (`closed_loop_.slx`) |
+| `17_case3_source_load_quantities.png` | Case 3: source and load quantities over the input-voltage profile |
+| `18_case3_inductor_diode_waveforms.png` | Case 3: inductor and diode waveforms |
+| `19_case3_capacitor_switch_waveforms.png` | Case 3: capacitor and switch waveforms |
+
+</details>
 
 ## Requirements
 
